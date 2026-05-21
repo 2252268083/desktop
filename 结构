@@ -1,0 +1,19 @@
+项目根目录/
+├── src/                    # 源代码：核心工作区
+│   ├── assets/            # 静态资源（图片、字体等）
+│   ├── components/        # 通用UI组件（Button, Modal）
+│   ├── pages/             # 页面级组件或路由视图
+│   ├── services/          # API调用、业务逻辑
+│   ├── stores/            # 状态管理（Pinia/Vuex/Redux）
+│   ├── utils/             # 工具函数
+│   ├── styles/            # 全局样式、主题变量
+│   ├── router/            # 前端路由配置
+│   ├── App.vue/tsx/jsx    # 根组件
+│   └── main.js/ts         # 入口文件
+├── public/                # 不经过构建的原始静态资源
+├── tests/                 # 单元测试、集成测试
+├── config/                # 构建配置（可放在根目录，如vite.config.js）
+├── .eslintrc.js           # 代码规范
+├── .prettierrc            # 格式化规则
+├── package.json           # 依赖与脚本
+└── README.md              # 项目文档

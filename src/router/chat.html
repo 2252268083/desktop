@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>桌宠聊天</title>
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Microsoft YaHei", sans-serif;
+        }
+
+        body {
+            background: transparent;  /* 关键：透明背景，让窗口透明度生效 */
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding-bottom: 6px;
+        }
+
+        #settings-btn {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            color: #ccc;
+            font-size: 22px;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            z-index: 10;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: rgba(0,0,0,0.4);
+            line-height: 1.2;
+        }
+        #settings-btn:hover {
+            color: white;
+            background: rgba(0,0,0,0.7);
+        }
+
+        #settings-panel {
+            position: absolute;
+            top: 36px;
+            right: 10px;
+            background: rgba(30,30,30,0.95);
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: none;
+            z-index: 20;
+            width: 220px;
+            backdrop-filter: blur(5px);
+        }
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        .setting-row label {
+            color: #ccc;
+            width: 55px;
+        }
+        .setting-row input[type="range"] {
+            flex: 1;
+            margin: 0 8px;
+            background: #555;
+            height: 4px;
+            border-radius: 2px;
+            -webkit-appearance: none;
+            appearance: none;
+            outline: none;
+        }
+        .setting-row input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #4a86e8;
+            cursor: pointer;
+        }
+        .setting-row span {
+            color: #aaa;
+            width: 35px;
+            text-align: right;
+        }
+
+        #chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            padding-top: 35px;
+            padding-bottom: 8px;
+            background: rgba(42, 42, 42, 0.85);  /* 半透明背景，透出窗口透明度 */
+            border-radius: 15px;
+            margin: 0 4px 4px 4px;
+        }
+
+        #chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        #chat-messages::-webkit-scrollbar-track {
+            background: rgba(42,42,42,0.5);
+        }
+        #chat-messages::-webkit-scrollbar-thumb {
+            background: #555555;
+            border-radius: 3px;
+        }
+
+        .message {
+            margin: 8px 0;
+            display: flex;
+        }
+        .message.user {
+            justify-content: flex-end;
+        }
+        .message.bot {
+            justify-content: flex-start;
+        }
+        .message-bubble {
+            max-width: 70%;
+            padding: 10px 14px;
+            border-radius: 12px;
+            line-height: 1.5;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .user .message-bubble {
+            background-color: #b8d9ff;
+            border: 1px solid #9bc0f0;
+            color: #0a2a44;
+        }
+
+        .bot .message-bubble {
+            background-color: #f5f5f5;
+            border: 1px solid #e8e8e8;
+            color: #212121;
+        }
+
+        #input-area {
+            display: flex;
+            padding: 8px;
+            background: rgba(42, 42, 42, 0.85);
+            border-top: 1px solid #383838;
+            flex-shrink: 0;
+            height: 66px;
+            margin: 0 4px 4px 4px;
+            border-radius: 0 0 15px 15px;
+        }
+        #message-input {
+            flex: 1;
+            background-color: #383838;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 14px;
+            resize: none;
+            height: 50px;
+            margin-right: 8px;
+        }
+        #message-input:focus {
+            outline: none;
+            border-color: #4a86e8;
+        }
+        #send-button {
+            background-color: #4a86e8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0 20px;
+            font-size: 14px;
+            cursor: pointer;
+            height: 50px;
+            flex-shrink: 0;
+        }
+        #send-button:hover {
+            background-color: #3b78d9;
+        }
+        #send-button:disabled {
+            background-color: #666666;
+            cursor: not-allowed;
+        }
+
+        /* 窗口缩放手柄 */
+        .resize-nw { position: absolute; left: 0; top: 0; width: 12px; height: 12px; cursor: nw-resize; z-index: 15; }
+        .resize-ne { position: absolute; right: 0; top: 0; width: 12px; height: 12px; cursor: ne-resize; z-index: 15; }
+        .resize-sw { position: absolute; left: 0; bottom: 0; width: 12px; height: 12px; cursor: sw-resize; z-index: 15; }
+        .resize-se { position: absolute; right: 0; bottom: 0; width: 12px; height: 12px; cursor: se-resize; z-index: 15; }
+        .resize-e { position: absolute; right: 0; top: 12px; bottom: 12px; width: 6px; cursor: e-resize; z-index: 15; }
+        .resize-s { position: absolute; left: 12px; bottom: 0; right: 12px; height: 6px; cursor: s-resize; z-index: 15; }
+    </style>
+</head>
+<body>
+    <div id="settings-btn" onclick="toggleSettings()">...</div>
+    <div id="settings-panel">
+        <div class="setting-row">
+            <label>透明度</label>
+            <input type="range" id="opacity-slider" min="20" max="100" value="100" oninput="updateOpacity(this.value)">
+            <span id="opacity-value">100%</span>
+        </div>
+    </div>
+    <div class="resize-nw"></div>
+    <div class="resize-ne"></div>
+    <div class="resize-sw"></div>
+    <div class="resize-se"></div>
+    <div class="resize-e"></div>
+    <div class="resize-s"></div>
+    <div id="chat-messages"></div>
+    <div id="input-area">
+        <textarea id="message-input" placeholder="输入消息..."></textarea>
+        <button id="send-button">发送</button>
+    </div>
+
+    <script>
+        var bridge = null;
+        var currentBotBubble = null;
+        var isSending = false;
+
+        new QWebChannel(qt.webChannelTransport, function(channel) {
+            bridge = channel.objects.bridge;
+            document.getElementById('send-button').disabled = false;
+        });
+
+        function toggleSettings() {
+            var panel = document.getElementById('settings-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function updateOpacity(val) {
+            document.getElementById('opacity-value').textContent = val + '%';
+            if (bridge) bridge.settings('opacity:' + (parseInt(val)/100));
+        }
+
+        let isResizing = false;
+        let resizeType = '';
+        let startX, startY, startW, startH;
+
+        document.querySelectorAll('[class^="resize-"]').forEach(el => {
+            el.addEventListener('mousedown', e => {
+                isResizing = true;
+                resizeType = el.className.split(' ')[0].replace('resize-', '');
+                startX = e.clientX;
+                startY = e.clientY;
+                const rect = document.body.getBoundingClientRect();
+                startW = rect.width;
+                startH = rect.height;
+                document.body.style.userSelect = 'none';
+            });
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!isResizing || !bridge) return;
+            const dx = e.clientX;
+            const dy = e.clientY;
+            let w = startW, h = startH, dxWin = 0, dyWin = 0;
+            switch(resizeType) {
+                case 'nw': w=startW-(startX-dx); h=startH-(startY-dy); dxWin=startX-dx; dyWin=startY-dy; break;
+                case 'ne': w=startW+(dx-startX); h=startH-(startY-dy); dyWin=startY-dy; break;
+                case 'sw': w=startW-(startX-dx); h=startH+(dy-startY); dxWin=startX-dx; break;
+                case 'se': w=startW+(dx-startX); h=startH+(dy-startY); break;
+                case 'e':  w=startW+(dx-startX); break;
+                case 's':  h=startH+(dy-startY); break;
+            }
+            w = Math.max(300, Math.min(800, w));
+            h = Math.max(300, Math.min(700, h));
+            let cmd = `size:${w},${h}`;
+            if (dxWin || dyWin) cmd += `;offset:${dxWin},${dyWin}`;
+            bridge.settings(cmd);
+        });
+
+        document.addEventListener('mouseup', () => {
+            isResizing = false;
+            resizeType = '';
+            document.body.style.userSelect = '';
+        });
+
+        function addMessage(role, text) {
+            var container = document.getElementById('chat-messages');
+            var msgDiv = document.createElement('div');
+            msgDiv.className = 'message ' + role;
+            var bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = text;
+            msgDiv.appendChild(bubble);
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function showLoading() {
+            var container = document.getElementById('chat-messages');
+            var div = document.createElement('div');
+            div.className = 'message bot';
+            div.id = 'loading';
+            var bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            bubble.textContent = '🤔 正在思考...';
+            div.appendChild(bubble);
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function hideLoading() {
+            var el = document.getElementById('loading');
+            if (el) el.remove();
+        }
+
+        function startBotMessage() {
+            hideLoading();
+            var container = document.getElementById('chat-messages');
+            var div = document.createElement('div');
+            div.className = 'message bot';
+            var bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            div.appendChild(bubble);
+            container.appendChild(div);
+            currentBotBubble = bubble;
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function addBotChunk(chunk) {
+            if (!chunk) return;
+            if (!currentBotBubble) startBotMessage();
+            currentBotBubble.textContent += chunk;
+            var container = document.getElementById('chat-messages');
+            if (container) container.scrollTop = container.scrollHeight;
+        }
+
+        function finishBotMessage() {
+            currentBotBubble = null;
+            isSending = false;
+            document.getElementById('send-button').disabled = false;
+        }
+
+        function loadHistory(messages) {
+            if (!messages || !messages.length) return;
+            messages.forEach(function(msg) {
+                var role = (msg.role === 'assistant') ? 'bot' : msg.role;
+                addMessage(role, msg.content);
+            });
+        }
+
+        function addBotMessage(text) {
+            hideLoading();
+            addMessage('bot', text);
+            isSending = false;
+            document.getElementById('send-button').disabled = false;
+        }
+
+        function sendMessage() {
+            if (isSending || !bridge) return;
+            var text = document.getElementById('message-input').value.trim();
+            if (!text) return;
+            isSending = true;
+            document.getElementById('send-button').disabled = true;
+            addMessage('user', text);
+            showLoading();
+            document.getElementById('message-input').value = '';
+            setTimeout(function() { bridge.sendMsg(text); }, 10);
+        }
+
+        document.getElementById('send-button').addEventListener('click', sendMessage);
+        document.getElementById('message-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        window.onload = function() {
+            document.getElementById('message-input').focus();
+        };
+    </script>
+</body>
+</html>

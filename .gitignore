@@ -1,0 +1,12 @@
+# 🔒 隐藏存了密钥的配置文件（核心！）
+config/config.py
+config/file_config.py
+
+# 🔒 其他敏感文件
+.env
+config/pet_memory.json
+
+# 垃圾文件
+__pycache__/
+.venv/
+.vscode/
